@@ -192,12 +192,27 @@ if st.session_state.page == "💰 Dividend":
             fig_real.update_layout(margin=dict(t=10, b=10, l=0, r=0), xaxis_visible=False, yaxis_title="", coloraxis_showscale=False)  # Sembunyikan skala warna
             st.plotly_chart(fig_real, use_container_width=True)  # Menampilkan grafik bar ke layar
 
-        st.caption("**Yield Comparison: Average vs Price Now**")  # Judul grafik bar bawah BARIS 3
-        df_melt = df.melt(id_vars='EMITTEN', value_vars=['DY FROM AVERAGE', 'DY FROM PRICE NOW'])  # Mengubah struktur tabel agar bisa dikelompokkan
+        st.caption("**Price Comparison: Average vs Price Now (P/L%)**")  # Judul grafik bar bawah BARIS 3
+        df_melt = df.melt(id_vars='EMITTEN', value_vars=['P/L (%)'])  # Mengubah struktur tabel agar bisa dikelompokkan
+        
+        # PERBAIKAN UTAMA: Membersihkan simbol % dan mengubah teks menjadi angka numerik murni
+        # 1. Mengubah tipe data menjadi string, menghapus simbol '%', menghapus spasi, lalu mengganti koma jika ada
+        df_melt['value'] = df_melt['value'].astype(str).str.replace('%', '', regex=False).str.strip()
+        
+        # 2. Mengonversi teks yang sudah bersih menjadi angka murni (jika ada nilai 'nan' atau kosong akan otomatis menjadi NaN)
+        df_melt['value'] = pd.to_numeric(df_melt['value'], errors='coerce')
+        
+        # 3. Membuang data yang benar-benar kosong/NaN asli dari database agar tidak merusak diagram
+        df_melt = df_melt.dropna(subset=['value'])
+        
+        # Membentuk objek grafik batang menggunakan data df_melt yang sudah berhasil dikonversi ke angka murni
         fig_yield = px.bar(df_melt, x='EMITTEN', y='value', color='variable', barmode='group',
                            text='value', height=260, 
-                           color_discrete_map={"DY FROM AVERAGE": "#A8E6CF", "DY FROM PRICE NOW": "#FF8B94"})
-        fig_yield.update_traces(texttemplate='%{text:.1f}%', textposition='outside', textfont_size=10)  # Menampilkan angka persen di luar ujung bar
+                           color_discrete_map={"P/L (%)": "#A8E6CF"})
+        
+        # Menampilkan angka persen di luar ujung bar dengan format 1 angka di belakang koma
+        fig_yield.update_traces(texttemplate='%{text:.1f}%', textposition='outside', textfont_size=10)  
+        
         fig_yield.update_layout(
             margin=dict(t=20, b=40, l=0, r=0), xaxis_title="", yaxis_title="",
             legend=dict(orientation="h", yanchor="top", y=-0.2, xanchor="center", x=0.5, font=dict(size=10), title_text=""),  # Legend horizontal di bawah
